@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Endurance Tracker</title>
+<style>
+:root {
+  --bg:#0d0d0f; --bg2:#18181c; --bg3:#222228; --card:#1c1c22;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.14);
+  --text:#f0f0f4; --text2:#9898a8; --text3:#5a5a6a;
+  --c1:#6c5ce7; --c1l:#a29bfe; --c1d:#4a3fbf;
+  --c2:#00b894; --c2l:#55efc4; --c2d:#008a6e;
+  --c3:#e17055; --c3l:#fab1a0; --c3d:#b5553d;
+  --c4:#0984e3; --c4l:#74b9ff; --c4d:#0667b3;
+  --r:16px; --rs:10px; --safe:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',system-ui,sans-serif;
+  min-height:100dvh;max-width:520px;margin:0 auto;
+  padding-bottom:calc(80px + var(--safe));overscroll-behavior:none}
+.page{display:none;padding:14px 14px 4px}
+.page.active{display:block}
+
+/* Header */
+.hdr{position:sticky;top:0;z-index:100;background:rgba(13,13,15,.94);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding:14px 18px 10px;border-bottom:1px solid var(--border)}
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-start}
+.hdr h1{font-size:22px;font-weight:700;letter-spacing:-.5px}
+.hdr-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.date-pill{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--text2)}
+
+/* Nav */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;
+  background:rgba(16,16,20,.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe);z-index:200}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 8px;
+  background:none;border:none;cursor:pointer;color:var(--text3);font-size:10px;transition:color .2s}
+.nb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nb.active{color:var(--c1l)}
+
+/* ── DAILY SUMMARY ── */
+.daily-summary{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.ds-ring{position:relative;width:68px;height:68px;flex-shrink:0}
+.ds-ring svg{transform:rotate(-90deg)}
+.ds-ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ds-num{font-size:22px;font-weight:900;letter-spacing:-1px;line-height:1}
+.ds-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.ds-body{flex:1}
+.ds-title{font-size:17px;font-weight:700}
+.ds-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.ds-bar{height:4px;background:var(--bg3);border-radius:2px;margin-top:10px;overflow:hidden}
+.ds-fill{height:100%;border-radius:2px;transition:width .5s ease;
+  background:linear-gradient(90deg,var(--c1),var(--c4))}
+.ds-streak{display:inline-flex;align-items:center;gap:5px;
+  background:rgba(253,203,110,.12);border:1px solid rgba(253,203,110,.3);
+  border-radius:12px;padding:3px 10px;font-size:12px;font-weight:700;color:#fdcb6e;margin-top:8px}
+
+/* ── HABIT CARDS ── */
+.hc{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);
+  margin-bottom:10px;overflow:hidden;transition:border-color .35s,box-shadow .35s}
+.hc[data-p="1"]{--hc:var(--c1);--hcl:var(--c1l)}
+.hc[data-p="2"]{--hc:var(--c2);--hcl:var(--c2l)}
+.hc[data-p="3"]{--hc:var(--c3);--hcl:var(--c3l)}
+.hc[data-p="4"]{--hc:var(--c4);--hcl:var(--c4l)}
+.hc.done-state{border-color:var(--hc)}
+@keyframes cardPop{0%{transform:scale(1)}40%{transform:scale(1.025)}100%{transform:scale(1)}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 6px rgba(108,92,231,.18)}}
+.hc.popping{animation:cardPop .4s ease,glowPulse .6s ease}
+
+/* card top row */
+.hc-main{display:flex;align-items:center;gap:12px;padding:14px 14px 10px}
+.hc-ring-wrap{position:relative;width:58px;height:58px;flex-shrink:0}
+.hc-ring-wrap svg{transform:rotate(-90deg);position:absolute;top:0;left:0}
+.hc-ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.hc-pct{font-size:10px;font-weight:800;line-height:1}
+.hc-icon{font-size:20px;line-height:1}
+.hc-body{flex:1;min-width:0}
+.hc-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.hc-meta{font-size:12px;color:var(--text2);margin-bottom:6px}
+.hc-streak{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--text3)}
+.hc-streak.hot{color:#fdcb6e}
+.hc-done-btn{width:42px;height:42px;border-radius:50%;background:var(--bg3);
+  border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;font-size:20px;transition:all .2s;user-select:none}
+.hc-done-btn:active{transform:scale(.82)}
+.hc-done-btn.done{background:var(--hc);border-color:var(--hc)}
+@keyframes checkBounce{0%{transform:scale(.5)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+.hc-done-btn.done{animation:checkBounce .35s ease forwards}
+
+/* 7-day mini history */
+.hc-days{display:flex;gap:4px;padding:0 14px 12px}
+.hc-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.hc-bar{width:100%;height:5px;border-radius:3px;background:var(--bg3);transition:background .3s}
+.hc-bar.done{background:var(--hc)}
+.hc-bar.today-bar{background:var(--bg3);outline:1.5px solid var(--text3);outline-offset:1px}
+.hc-bar.today-bar.done{background:var(--hc);outline-color:var(--hcl)}
+.hc-dlbl{font-size:9px;color:var(--text3)}
+
+/* expand button */
+.hc-expand{width:100%;padding:7px;background:rgba(255,255,255,.03);
+  border:none;border-top:1px solid var(--border);color:var(--text3);font-size:11px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:color .2s}
+.hc-expand:active{color:var(--text2)}
+.hc-expand svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.hc-expand.open svg{transform:rotate(180deg)}
+
+/* detail panel */
+.hc-detail{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.hc-detail.open{max-height:900px}
+.hc-detail-inner{padding:14px;border-top:1px solid var(--border)}
+
+/* sets dots */
+.sets-row{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
+.sdot{width:38px;height:38px;border-radius:50%;border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+  color:var(--text3);cursor:pointer;transition:all .15s;user-select:none}
+.sdot.done{color:#fff}
+.sdot:active{transform:scale(.85)}
+
+/* ── SUPPORTING HABITS ── */
+.support-row{display:flex;gap:10px;margin-bottom:12px}
+.support-card{flex:1;background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);
+  padding:13px;cursor:pointer;transition:border-color .25s;user-select:none}
+.support-card.done{border-color:var(--c2)}
+.support-card:active{transform:scale(.97)}
+.sc-icon{font-size:22px;margin-bottom:6px}
+.sc-name{font-size:13px;font-weight:700;margin-bottom:2px}
+.sc-meta{font-size:11px;color:var(--text2)}
+.sc-check{width:22px;height:22px;border-radius:7px;border:2px solid var(--border2);margin-top:8px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s}
+.support-card.done .sc-check{background:var(--c2);border-color:var(--c2)}
+
+/* ── HISTORY / HEATMAP ── */
+.streak-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stk-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:13px}
+.stk-card[data-p="1"]{--hc:var(--c1);--hcl:var(--c1l)}
+.stk-card[data-p="2"]{--hc:var(--c2);--hcl:var(--c2l)}
+.stk-card[data-p="3"]{--hc:var(--c3);--hcl:var(--c3l)}
+.stk-card[data-p="4"]{--hc:var(--c4);--hcl:var(--c4l)}
+.stk-icon{font-size:18px;margin-bottom:4px}
+.stk-name{font-size:11px;color:var(--text2);margin-bottom:4px}
+.stk-val{font-size:30px;font-weight:900;letter-spacing:-1.5px;color:var(--hcl)}
+.stk-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.stk-bar{height:3px;background:var(--bg3);border-radius:2px;margin-top:8px;overflow:hidden}
+.stk-bar-fill{height:100%;background:var(--hc);border-radius:2px}
+
+/* Heatmap */
+.heatmap-outer{overflow-x:auto;padding-bottom:6px}
+.heatmap{display:flex;gap:3px}
+.hm-col{display:flex;flex-direction:column;gap:3px}
+.hm-cell{width:24px;height:24px;border-radius:4px;background:var(--bg3);
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px;padding:3px;flex-shrink:0}
+.hm-cell.today-cell{outline:2px solid var(--text2);outline-offset:1px}
+.hm-dot{width:6px;height:6px;border-radius:50%}
+.hm-day-label{width:24px;height:16px;display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--text3);flex-shrink:0}
+
+/* Inputs & buttons */
+input[type=number],input[type=text],select{background:var(--bg3);border:1px solid var(--border2);
+  border-radius:var(--rs);color:var(--text);font-size:15px;padding:11px 12px;width:100%;-webkit-appearance:none}
+input:focus,select:focus{outline:2px solid var(--c1);outline-offset:2px;border-color:transparent}
+label{font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:5px}
+.fg{margin-bottom:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:12px 16px;border-radius:var(--rs);font-size:14px;font-weight:600;
+  border:none;cursor:pointer;transition:all .15s;user-select:none;width:100%}
+.btn:active{transform:scale(.97)}
+.btn-sec{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+.btn-sm{padding:9px 13px;font-size:13px;width:auto}
+.btn-p1{background:var(--c1);color:#fff}
+.btn-p2{background:var(--c2);color:#fff}
+.btn-p3{background:var(--c3);color:#fff}
+.btn-p4{background:var(--c4);color:#fff}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.card-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.section-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin:16px 0 9px}
+.progress-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin:6px 0}
+.progress-fill{height:100%;border-radius:3px;transition:width .4s}
+
+/* Pill tabs */
+.pill-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.pill-tabs::-webkit-scrollbar{display:none}
+.pill-tab{flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;
+  cursor:pointer;background:var(--bg3);border:1px solid var(--border);color:var(--text2);transition:all .15s}
+.pill-tab.active{background:var(--c1);border-color:var(--c1);color:#fff}
+
+/* Accordion */
+.acc-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:3px 0}
+.acc-hdr svg{width:17px;height:17px;stroke:var(--text2);transition:transform .2s;flex-shrink:0}
+.acc-hdr.open svg{transform:rotate(180deg)}
+.acc-body{overflow:hidden;max-height:0;transition:max-height .35s ease}
+.acc-body.open{max-height:1200px}
+.acc-inner{padding-top:12px}
+.rule{font-size:13px;color:var(--text2);line-height:1.6;padding:5px 0;border-bottom:1px solid var(--border)}
+.rule:last-child{border-bottom:none}
+.rule strong{color:var(--text);font-weight:600}
+.proto-badge{display:inline-flex;align-items:center;gap:6px;border:1px solid;border-radius:20px;font-size:12px;font-weight:600;padding:3px 10px;margin-bottom:8px}
+.proto-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* Hydration */
+.hydration-display{text-align:center;padding:18px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);margin-bottom:14px}
+.hydration-oz{font-size:54px;font-weight:900;letter-spacing:-3px;color:var(--c4l)}
+
+/* Timer */
+.timer-ring-wrap{position:relative;width:140px;height:140px;margin:14px auto;display:flex;align-items:center;justify-content:center}
+.timer-ring-wrap svg{position:absolute;top:0;left:0;transform:rotate(-90deg)}
+.timer-display{font-size:34px;font-weight:800;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+
+/* Exercise library */
+.ex-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:12px 13px;margin-bottom:7px}
+.ex-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px}
+.ex-name{font-size:14px;font-weight:600;flex:1}
+.ex-pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.ex-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px}
+.ex-tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text2)}
+.ex-meta{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.ex-note{font-size:12px;color:var(--text2);line-height:1.5}
+.ex-ratio{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid}
+.lib-empty{text-align:center;padding:28px;color:var(--text3);font-size:14px}
+
+/* Check */
+.chk{width:25px;height:25px;border-radius:8px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.chk.checked{background:var(--c2);border-color:var(--c2)}
+.chk svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .15s}
+.chk.checked svg{opacity:1}
+
+/* Toast */
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--bg2);border:1px solid var(--border2);color:var(--text);border-radius:12px;
+  padding:11px 18px;font-size:14px;font-weight:500;z-index:999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty{text-align:center;padding:32px 20px;color:var(--text3);font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-row">
+    <div>
+      <h1>Endurance</h1>
+      <div class="hdr-sub">Huberman Lab</div>
+    </div>
+    <div style="text-align:right">
+      <div class="date-pill" id="headerDate"></div>
+      <div id="globalStreak" style="margin-top:5px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     TODAY
+════════════════════════════════════════ -->
+<div class="page active" id="page-today">
+
+  <!-- Daily summary ring -->
+  <div class="daily-summary">
+    <div class="ds-ring">
+      <svg width="68" height="68" viewBox="0 0 68 68">
+        <circle cx="34" cy="34" r="28" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6"/>
+        <circle id="ds-ring-fill" cx="34" cy="34" r="28" fill="none"
+          stroke="url(#dsGrad)" stroke-width="6"
+          stroke-dasharray="175.9" stroke-dashoffset="175.9"
+          stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="dsGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#6c5ce7"/>
+            <stop offset="100%" stop-color="#0984e3"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="ds-ring-text">
+        <div class="ds-num" id="ds-count">0</div>
+        <div class="ds-lbl">of 4</div>
+      </div>
+    </div>
+    <div class="ds-body">
+      <div class="ds-title" id="ds-title">Let's get started</div>
+      <div class="ds-sub" id="ds-sub">Tap ✓ on any habit below</div>
+      <div class="ds-bar"><div class="ds-fill" id="ds-bar-fill" style="width:0%"></div></div>
+      <div id="ds-streak-wrap"></div>
+    </div>
+  </div>
+
+  <!-- Supporting habits row -->
+  <div class="support-row">
+    <div class="support-card" id="sc-warmup" onclick="toggleSupport('warmup')">
+      <div class="sc-icon">🫁</div>
+      <div class="sc-name">Warm-Up</div>
+      <div class="sc-meta">3 min breathing</div>
+      <div class="sc-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+    </div>
+    <div class="support-card" id="sc-cooldown" onclick="toggleSupport('cooldown')">
+      <div class="sc-icon">🧘</div>
+      <div class="sc-name">Cool-Down</div>
+      <div class="sc-meta">5–20 min nasal exhales</div>
+      <div class="sc-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+    </div>
+  </div>
+
+  <!-- ── Habit Card 1: Muscular Endurance ── -->
+  <div class="hc" id="hc-1" data-p="1">
+    <div class="hc-main">
+      <div class="hc-ring-wrap">
+        <svg width="58" height="58" viewBox="0 0 58 58">
+          <circle cx="29" cy="29" r="23" fill="none" stroke="rgba(108,92,231,.15)" stroke-width="5"/>
+          <circle id="ring-1" cx="29" cy="29" r="23" fill="none" stroke="var(--c1)" stroke-width="5"
+            stroke-dasharray="144.5 144.5" stroke-dashoffset="144.5"
+            stroke-linecap="round" style="transition:stroke-dashoffset .5s ease"/>
+        </svg>
+        <div class="hc-ring-inner">
+          <div class="hc-icon">💪</div>
+          <div class="hc-pct" id="pct-1" style="color:var(--c1l)">0%</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-name">Muscular Endurance</div>
+        <div class="hc-meta" id="meta-1">0 / 3 sets · local fatigue</div>
+        <div class="hc-streak" id="streak-1">🔥 0 days</div>
+      </div>
+      <div class="hc-done-btn" id="done-1" onclick="markHabitDone(1)">○</div>
+    </div>
+    <div class="hc-days" id="days-1"></div>
+    <button class="hc-expand" id="exp-1" onclick="toggleDetail(1)">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      Details & Timer
+    </button>
+    <div class="hc-detail" id="detail-1">
+      <div class="hc-detail-inner">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Sets completed (tap to toggle)</div>
+        <div class="sets-row" id="srow-1"></div>
+        <div class="row" style="margin-bottom:10px">
+          <div class="fg"><label>Sets (3–5)</label><input type="number" id="p1-sets-n" min="3" max="5" value="3" onchange="updateSetCount(1,this.value)"></div>
+          <div class="fg"><label>Rest (sec)</label><input type="number" id="p1-rest" min="30" max="180" value="90"></div>
+        </div>
+        <div class="row">
+          <button class="btn btn-sec btn-sm" onclick="quickTimer(parseInt(document.getElementById('p1-rest').value),'Rest Timer')">Rest Timer</button>
+          <button class="btn btn-p1 btn-sm" onclick="logSet(1)">+ Log Set</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Habit Card 2: Long-Duration ── -->
+  <div class="hc" id="hc-2" data-p="2">
+    <div class="hc-main">
+      <div class="hc-ring-wrap">
+        <svg width="58" height="58" viewBox="0 0 58 58">
+          <circle cx="29" cy="29" r="23" fill="none" stroke="rgba(0,184,148,.15)" stroke-width="5"/>
+          <circle id="ring-2" cx="29" cy="29" r="23" fill="none" stroke="var(--c2)" stroke-width="5"
+            stroke-dasharray="144.5 144.5" stroke-dashoffset="144.5"
+            stroke-linecap="round" style="transition:stroke-dashoffset .5s ease"/>
+        </svg>
+        <div class="hc-ring-inner">
+          <div class="hc-icon">🏃</div>
+          <div class="hc-pct" id="pct-2" style="color:var(--c2l)">0%</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-name">Long-Duration Cardio</div>
+        <div class="hc-meta" id="meta-2">0:00 / 30 min target</div>
+        <div class="hc-streak" id="streak-2">🔥 0 days</div>
+      </div>
+      <div class="hc-done-btn" id="done-2" onclick="markHabitDone(2)">○</div>
+    </div>
+    <div class="hc-days" id="days-2"></div>
+    <button class="hc-expand" id="exp-2" onclick="toggleDetail(2)">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      Details & Timer
+    </button>
+    <div class="hc-detail" id="detail-2">
+      <div class="hc-detail-inner">
+        <div class="row" style="margin-bottom:10px">
+          <div class="fg"><label>Target (min, ≥12)</label><input type="number" id="p2-target" min="12" value="30" onchange="updateP2Target()"></div>
+          <div class="fg"><label>Elapsed</label>
+            <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);padding:11px 12px;font-size:15px;font-weight:700;color:var(--c2l)" id="p2-elapsed-disp">0:00</div>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="p2-pb" style="width:0%;background:var(--c2)"></div></div>
+        <div class="check-row" style="padding:10px 0">
+          <div class="chk" id="p2-bonk" onclick="this.classList.toggle('checked')"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div style="font-size:13px;color:var(--text2)">Used wall-hack (brief sprint to break through bonk)</div>
+        </div>
+        <div class="row">
+          <button class="btn btn-sec btn-sm" id="p2-toggle-btn" onclick="toggleP2()">▶ Start</button>
+          <button class="btn btn-p2 btn-sm" onclick="markHabitDone(2)">✓ Mark Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Habit Card 3: HIIT Anaerobic ── -->
+  <div class="hc" id="hc-3" data-p="3">
+    <div class="hc-main">
+      <div class="hc-ring-wrap">
+        <svg width="58" height="58" viewBox="0 0 58 58">
+          <circle cx="29" cy="29" r="23" fill="none" stroke="rgba(225,112,85,.15)" stroke-width="5"/>
+          <circle id="ring-3" cx="29" cy="29" r="23" fill="none" stroke="var(--c3)" stroke-width="5"
+            stroke-dasharray="144.5 144.5" stroke-dashoffset="144.5"
+            stroke-linecap="round" style="transition:stroke-dashoffset .5s ease"/>
+        </svg>
+        <div class="hc-ring-inner">
+          <div class="hc-icon">⚡</div>
+          <div class="hc-pct" id="pct-3" style="color:var(--c3l)">0%</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-name">HIIT Anaerobic</div>
+        <div class="hc-meta" id="meta-3">0 / 3 intervals · &gt;100% VO₂</div>
+        <div class="hc-streak" id="streak-3">🔥 0 days</div>
+      </div>
+      <div class="hc-done-btn" id="done-3" onclick="markHabitDone(3)">○</div>
+    </div>
+    <div class="hc-days" id="days-3"></div>
+    <button class="hc-expand" id="exp-3" onclick="toggleDetail(3)">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      Details & Timer
+    </button>
+    <div class="hc-detail" id="detail-3">
+      <div class="hc-detail-inner">
+        <div class="sets-row" id="srow-3"></div>
+        <div class="row" style="margin-bottom:10px">
+          <div class="fg"><label>Intervals (3–12)</label><input type="number" id="p3-sets-n" min="3" max="12" value="3" onchange="updateSetCount(3,this.value)"></div>
+          <div class="fg"><label>Ratio</label>
+            <select id="p3-ratio" onchange="updateP3Ratio()">
+              <option value="3:1">3:1 — 30s on/10s rest</option>
+              <option value="1:5">1:5 — 20s on/100s rest</option>
+            </select>
+          </div>
+        </div>
+        <div id="p3-interval-panel" style="display:none;text-align:center;padding:14px;background:var(--bg3);border-radius:10px;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--text2)" id="p3-phase-lbl">Work Phase</div>
+          <div class="timer-display" id="p3-timer-disp" style="color:var(--c3l)">0:30</div>
+        </div>
+        <div class="row">
+          <button class="btn btn-sec btn-sm" id="p3-interval-btn" onclick="toggleP3()">▶ Interval Timer</button>
+          <button class="btn btn-p3 btn-sm" onclick="logSet(3)">+ Log Interval</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Habit Card 4: HIIT Aerobic ── -->
+  <div class="hc" id="hc-4" data-p="4">
+    <div class="hc-main">
+      <div class="hc-ring-wrap">
+        <svg width="58" height="58" viewBox="0 0 58 58">
+          <circle cx="29" cy="29" r="23" fill="none" stroke="rgba(9,132,227,.15)" stroke-width="5"/>
+          <circle id="ring-4" cx="29" cy="29" r="23" fill="none" stroke="var(--c4)" stroke-width="5"
+            stroke-dasharray="144.5 144.5" stroke-dashoffset="144.5"
+            stroke-linecap="round" style="transition:stroke-dashoffset .5s ease"/>
+        </svg>
+        <div class="hc-ring-inner">
+          <div class="hc-icon">❤️</div>
+          <div class="hc-pct" id="pct-4" style="color:var(--c4l)">0%</div>
+        </div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-name">HIIT Aerobic</div>
+        <div class="hc-meta" id="meta-4">0 / 3 sets · 1:1 ratio</div>
+        <div class="hc-streak" id="streak-4">🔥 0 days</div>
+      </div>
+      <div class="hc-done-btn" id="done-4" onclick="markHabitDone(4)">○</div>
+    </div>
+    <div class="hc-days" id="days-4"></div>
+    <button class="hc-expand" id="exp-4" onclick="toggleDetail(4)">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      Details & Timer
+    </button>
+    <div class="hc-detail" id="detail-4">
+      <div class="hc-detail-inner">
+        <div class="sets-row" id="srow-4"></div>
+        <div class="row" style="margin-bottom:10px">
+          <div class="fg"><label>Sets (3–12)</label><input type="number" id="p4-sets-n" min="3" max="12" value="3" onchange="updateSetCount(4,this.value)"></div>
+          <div class="fg"><label>Miles/set</label><input type="number" id="p4-miles-in" min="0.25" max="2" step="0.25" value="1"></div>
+        </div>
+        <div class="fg">
+          <label>Last set time (min:sec) — rest same duration</label>
+          <input type="text" id="p4-last-time" placeholder="7:00" maxlength="5">
+        </div>
+        <div id="p4-rest-panel" style="display:none;text-align:center;padding:14px;background:var(--bg3);border-radius:10px;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--text2)">Rest (equal to effort)</div>
+          <div class="timer-display" id="p4-timer-disp" style="color:var(--c4l)">7:00</div>
+        </div>
+        <div class="row">
+          <button class="btn btn-sec btn-sm" id="p4-rest-btn" onclick="startP4Rest()">Rest Timer</button>
+          <button class="btn btn-p4 btn-sm" onclick="logSet(4)">+ Log Set</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-today -->
+
+<!-- ════════════════════════════════════════
+     HYDRATION
+════════════════════════════════════════ -->
+<div class="page" id="page-hydration">
+  <div class="section-title">Galpin Equation</div>
+  <div class="card">
+    <div class="card-title">Your body weight</div>
+    <div class="fg"><label>Weight (lbs)</label><input type="number" id="bw" min="80" max="400" value="170" onchange="calcH()"></div>
+    <div style="font-size:13px;color:var(--text2)">Drink <strong style="color:var(--text)">weight ÷ 30</strong> oz every <strong style="color:var(--text)">15 minutes</strong></div>
+  </div>
+  <div class="hydration-display">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:4px">oz every 15 min</div>
+    <div class="hydration-oz" id="h-oz">5.7</div>
+    <div style="font-size:14px;color:var(--text2);margin-top:4px" id="h-ml"></div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">Avoid heavy gulps above 70% VO₂ max</div>
+  </div>
+  <div class="section-title">Total Fluid Needed</div>
+  <div class="fg"><label>Workout duration (minutes)</label><input type="number" id="h-dur" min="1" max="240" value="45" onchange="calcHTotal()"></div>
+  <div class="card" id="h-total-card"></div>
+  <div class="section-title">Hydration Timer</div>
+  <div class="card">
+    <div id="h-timer-wrap" style="text-align:center;padding:14px;background:var(--bg3);border-radius:10px;margin-bottom:12px;display:none">
+      <div style="font-size:12px;color:var(--text2)">Next drink in</div>
+      <div class="timer-display" id="h-timer-disp" style="color:var(--c4l)">15:00</div>
+    </div>
+    <button class="btn btn-p4" id="h-timer-btn" onclick="toggleHTimer()">▶ Start Hydration Timer</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     TIMER
+════════════════════════════════════════ -->
+<div class="page" id="page-timer">
+  <div class="section-title">Timer</div>
+  <div class="card" style="text-align:center">
+    <div class="timer-ring-wrap">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="60" fill="none" stroke="var(--bg3)" stroke-width="8"/>
+        <circle cx="70" cy="70" r="60" fill="none" stroke="var(--c1)" stroke-width="8"
+          stroke-dasharray="377" stroke-dashoffset="377" stroke-linecap="round" id="mainRingProg"/>
+      </svg>
+      <div style="text-align:center">
+        <div class="timer-display" id="mainTimerDisp">0:00</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px" id="mainTimerLbl">Set duration</div>
+      </div>
+    </div>
+    <div class="row" style="margin:12px 0">
+      <div class="fg"><label>Min</label><input type="number" id="t-min" min="0" max="60" value="0"></div>
+      <div class="fg"><label>Sec</label><input type="number" id="t-sec" min="0" max="59" value="30"></div>
+    </div>
+    <div class="fg"><input type="text" id="t-name" placeholder="Timer label (optional)"></div>
+    <div class="row">
+      <button class="btn btn-sec" onclick="resetMainTimer()">Reset</button>
+      <button class="btn btn-p1" id="mainTimerBtn" onclick="toggleMainTimer()">▶ Start</button>
+    </div>
+  </div>
+  <div class="section-title">Quick Timers</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button class="btn btn-sec" onclick="quickTimer(180,'Warm-Up 3min')">🫁 Warm-Up 3m</button>
+    <button class="btn btn-sec" onclick="quickTimer(30,'Work Phase')">⚡ Work 30s</button>
+    <button class="btn btn-sec" onclick="quickTimer(90,'Rest 90s')">😮‍💨 Rest 90s</button>
+    <button class="btn btn-sec" onclick="quickTimer(300,'Cool-Down 5m')">🧘 Cool-Down 5m</button>
+    <button class="btn btn-sec" onclick="quickTimer(900,'Drink Reminder')">💧 Hydration 15m</button>
+    <button class="btn btn-sec" onclick="quickTimer(100,'Rest 1:5')">💪 Rest 100s</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     HISTORY
+════════════════════════════════════════ -->
+<div class="page" id="page-history">
+  <div class="section-title">Current Streaks</div>
+  <div class="streak-cards" id="stk-cards"></div>
+
+  <div class="section-title">Last 28 Days</div>
+  <div class="card">
+    <div style="display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap" id="hm-legend"></div>
+    <div class="heatmap-outer">
+      <div id="heatmap-grid"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Completion Rate (last 28 days)</div>
+  <div id="completion-rates"></div>
+
+  <div style="margin-top:4px">
+    <button class="btn btn-sec" onclick="clearHistory()" style="color:var(--c3l);border-color:var(--c3)">Clear All History</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     GUIDE
+════════════════════════════════════════ -->
+<div class="page" id="page-guide">
+  <div class="pill-tabs">
+    <div class="pill-tab active" onclick="switchGuide(this,'protocols')">Protocols</div>
+    <div class="pill-tab" onclick="switchGuide(this,'exercises')">Exercise Library</div>
+  </div>
+
+  <div id="guideSectionProtocols">
+    <div class="section-title">Protocols Reference</div>
+
+    <div class="card" style="margin-bottom:8px">
+      <div class="acc-hdr" onclick="toggleAcc(this)">
+        <div><div class="proto-badge" style="color:var(--c1l);border-color:var(--c1);background:rgba(108,92,231,.1);margin-bottom:3px"><div class="proto-dot" style="background:var(--c1)"></div>💪 Muscular Endurance</div><div style="font-size:12px;color:var(--text2)">3–5 sets · 12–100 reps</div></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body"><div class="acc-inner">
+        <div class="rule"><strong>Sets:</strong> 3–5 sets</div>
+        <div class="rule"><strong>Reps:</strong> 12–100 (12–25 most practical)</div>
+        <div class="rule"><strong>Rest:</strong> 30–180 sec between sets</div>
+        <div class="rule"><strong>Exercises:</strong> Push-ups, pull-ups, planks, wall sits, KB swings</div>
+        <div class="rule"><strong>Train to failure:</strong> Approach or reach muscular failure</div>
+        <div class="rule"><strong>⚠ Minimize eccentric:</strong> Don't slow the lowering phase</div>
+        <div class="rule"><strong>⚠ No Olympic lifts</strong> at high reps — form degrades too fast</div>
+      </div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:8px">
+      <div class="acc-hdr" onclick="toggleAcc(this)">
+        <div><div class="proto-badge" style="color:var(--c2l);border-color:var(--c2);background:rgba(0,184,148,.1);margin-bottom:3px"><div class="proto-dot" style="background:var(--c2)"></div>🏃 Long-Duration Cardio</div><div style="font-size:12px;color:var(--text2)">1 continuous set · 12min–several hours</div></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body"><div class="acc-inner">
+        <div class="rule"><strong>Structure:</strong> 1 continuous effort</div>
+        <div class="rule"><strong>Duration:</strong> 12 min to several hours</div>
+        <div class="rule"><strong>Intensity:</strong> Below 100% VO₂ max — steady rhythm</div>
+        <div class="rule"><strong>Benefit:</strong> Mitochondrial density + microcapillary network</div>
+        <div class="rule"><strong>💡 Wall hack:</strong> Brief acceleration when bonking — taps phosphocreatine/glycogen pathways</div>
+      </div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:8px">
+      <div class="acc-hdr" onclick="toggleAcc(this)">
+        <div><div class="proto-badge" style="color:var(--c3l);border-color:var(--c3);background:rgba(225,112,85,.1);margin-bottom:3px"><div class="proto-dot" style="background:var(--c3)"></div>⚡ HIIT Anaerobic</div><div style="font-size:12px;color:var(--text2)">3–12 sets · above 100% VO₂ max</div></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body"><div class="acc-inner">
+        <div class="rule"><strong>3:1 ratio (low-skill):</strong> 30s work / 10s rest — assault bike, rower</div>
+        <div class="rule"><strong>1:5 ratio (high-skill):</strong> 20s work / 100s rest — squats, KB movements</div>
+        <div class="rule"><strong>Progression:</strong> Start at 3 sets. Add 1–2 per week</div>
+        <div class="rule"><strong>Goal:</strong> Explosive bursts under repeated high fatigue</div>
+      </div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:8px">
+      <div class="acc-hdr" onclick="toggleAcc(this)">
+        <div><div class="proto-badge" style="color:var(--c4l);border-color:var(--c4);background:rgba(9,132,227,.1);margin-bottom:3px"><div class="proto-dot" style="background:var(--c4)"></div>❤️ HIIT Aerobic</div><div style="font-size:12px;color:var(--text2)">3–12 sets · 1:1 work:rest</div></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body"><div class="acc-inner">
+        <div class="rule"><strong>Target:</strong> Cardiac stroke volume (more blood per beat)</div>
+        <div class="rule"><strong>Protocol:</strong> Run 1 mile hard → rest same duration → repeat</div>
+        <div class="rule"><strong>Volume:</strong> Build to 4–7 total working miles</div>
+        <div class="rule"><strong>Ratio:</strong> Strictly 1:1 work:rest</div>
+      </div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:8px">
+      <div class="acc-hdr" onclick="toggleAcc(this)">
+        <div style="font-size:14px;font-weight:600">🫁 Respiratory Warm-Up + 🧘 Cool-Down + 💧 Hydration</div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="acc-body"><div class="acc-inner">
+        <div class="rule"><strong>Warm-up:</strong> 3 min deep breathing — raise chest + belly before any bout</div>
+        <div class="rule"><strong>Cool-down:</strong> 5–20 min lying quietly with slow nasal exhales immediately post-workout</div>
+        <div class="rule"><strong>Hydration formula:</strong> body weight (lbs) ÷ 30 = oz per 15 min of exercise</div>
+        <div class="rule"><strong>⚠ Caution:</strong> Avoid heavy gulps above 70% VO₂ max unless gut-trained</div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- Exercise Library -->
+  <div id="guideSectionExercises" style="display:none">
+    <div class="section-title">Filter by Protocol</div>
+    <div class="pill-tabs" id="libProtoTabs">
+      <div class="pill-tab active" onclick="filterLib(this,0)">All</div>
+      <div class="pill-tab" onclick="filterLib(this,1)">💪 Muscular</div>
+      <div class="pill-tab" onclick="filterLib(this,2)">🏃 Cardio</div>
+      <div class="pill-tab" onclick="filterLib(this,3)">⚡ HIIT-A</div>
+      <div class="pill-tab" onclick="filterLib(this,4)">❤️ HIIT-B</div>
+    </div>
+    <div class="fg"><input type="text" id="libSearch" placeholder="Search by name, muscle, type…" oninput="renderLib()"></div>
+    <div id="libGrid"></div>
+  </div>
+</div>
+
+<!-- ════ NAV ════ -->
+<nav class="nav">
+  <button class="nb active" onclick="showPage('today',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Today
+  </button>
+  <button class="nb" onclick="showPage('hydration',this)">
+    <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>Hydrate
+  </button>
+  <button class="nb" onclick="showPage('timer',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Timer
+  </button>
+  <button class="nb" onclick="showPage('history',this)">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>History
+  </button>
+  <button class="nb" onclick="showPage('guide',this)">
+    <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Guide
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────
+const CIRC = 144.5; // 2π×23
+const PROTO = {
+  1:{icon:'💪',name:'Muscular Endurance',color:'var(--c1)',colorL:'var(--c1l)',defaultSets:3},
+  2:{icon:'🏃',name:'Long-Duration Cardio',color:'var(--c2)',colorL:'var(--c2l)',defaultSets:1},
+  3:{icon:'⚡',name:'HIIT Anaerobic',color:'var(--c3)',colorL:'var(--c3l)',defaultSets:3},
+  4:{icon:'❤️',name:'HIIT Aerobic',color:'var(--c4)',colorL:'var(--c4l)',defaultSets:3},
+};
+const DAY_LABELS = ['S','M','T','W','T','F','S'];
+
+// ── STATE ─────────────────────────────────────────────────
+let S = {bodyWeight:170, logs:{}, today:{}, setsTarget:{1:3,2:1,3:3,4:3}};
+// S.logs[dateKey][proto] = {done:bool, sets:N, elapsed:N, miles:N}
+// S.today = {warmup:bool, cooldown:bool}
+
+function dateKey(d){d=d||new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+const TODAY = dateKey();
+
+function load(){
+  try{const r=localStorage.getItem('hub2');if(r)S=JSON.parse(r);}catch(e){}
+  if(!S.logs)S.logs={};
+  if(!S.today)S.today={};
+  if(!S.setsTarget)S.setsTarget={1:3,2:1,3:3,4:3};
+  initAll();
+}
+function save(){try{localStorage.setItem('hub2',JSON.stringify(S));}catch(e){}}
+
+function getDay(proto,date){
+  const k=date||TODAY;
+  if(!S.logs[k])S.logs[k]={};
+  if(!S.logs[k][proto])S.logs[k][proto]={done:false,sets:0,elapsed:0,miles:0};
+  return S.logs[k][proto];
+}
+
+function initAll(){
+  const d=new Date();
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  document.getElementById('headerDate').textContent=days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()];
+  if(document.getElementById('bw'))document.getElementById('bw').value=S.bodyWeight||170;
+  [1,2,3,4].forEach(p=>{
+    updateSetCount(p,S.setsTarget[p]||PROTO[p].defaultSets,true);
+    refreshHabitCard(p);
+  });
+  refreshSupport();
+  updateDailySummary();
+  calcH();calcHTotal();
+}
+
+// ── HABIT CARD REFRESH ─────────────────────────────────────
+function refreshHabitCard(p){
+  const d=getDay(p);
+  const target=S.setsTarget[p]||PROTO[p].defaultSets;
+  const pct=d.done?100:p===2?getP2Pct():Math.round((d.sets/target)*100);
+  const offset=CIRC-(CIRC*Math.min(100,pct)/100);
+  const ringEl=document.getElementById('ring-'+p);
+  if(ringEl)ringEl.style.strokeDashoffset=offset;
+  const pctEl=document.getElementById('pct-'+p);
+  if(pctEl)pctEl.textContent=pct+'%';
+  const card=document.getElementById('hc-'+p);
+  if(card){if(d.done)card.classList.add('done-state');else card.classList.remove('done-state');}
+  const doneBtn=document.getElementById('done-'+p);
+  if(doneBtn){doneBtn.textContent=d.done?'✓':'○';if(d.done)doneBtn.classList.add('done');else doneBtn.classList.remove('done');}
+  // meta
+  const metaEl=document.getElementById('meta-'+p);
+  if(metaEl){
+    if(p===1)metaEl.textContent=d.sets+' / '+target+' sets · local fatigue';
+    else if(p===2){const m=Math.floor((d.elapsed||0)/60);const s=(d.elapsed||0)%60;metaEl.textContent=m+':'+(s<10?'0':'')+s+' / '+(S.p2Target||30)+' min target';}
+    else if(p===3)metaEl.textContent=d.sets+' / '+target+' intervals · >100% VO₂';
+    else metaEl.textContent=d.sets+' / '+target+' sets · '+(d.miles||0).toFixed(1)+' mi';
+  }
+  // streak
+  const streak=calcStreak(p);
+  const streakEl=document.getElementById('streak-'+p);
+  if(streakEl){
+    streakEl.textContent=(streak>0?'🔥 ':'⬜ ')+streak+' day'+(streak!==1?'s':'');
+    if(streak>=3)streakEl.classList.add('hot');else streakEl.classList.remove('hot');
+  }
+  // 7-day dots
+  renderMiniDays(p);
+  // sets dots
+  updateSetDots(p,d.sets,target);
+}
+
+function getP2Pct(){
+  const d=getDay(2);
+  const target=(S.p2Target||30)*60;
+  return Math.min(100,Math.round(((d.elapsed||0)/target)*100));
+}
+
+function renderMiniDays(p){
+  const el=document.getElementById('days-'+p);if(!el)return;
+  const labels=[];const done=[];
+  for(let i=6;i>=0;i--){
+    const dt=new Date();dt.setDate(dt.getDate()-i);
+    const k=dateKey(dt);
+    labels.push(DAY_LABELS[dt.getDay()]);
+    done.push(S.logs[k]&&S.logs[k][p]&&S.logs[k][p].done);
+  }
+  el.innerHTML=labels.map((l,i)=>`
+    <div class="hc-day">
+      <div class="hc-bar${done[i]?' done':''}${i===6?' today-bar':''}"></div>
+      <div class="hc-dlbl">${l}</div>
+    </div>`).join('');
+}
+
+// ── DAILY SUMMARY ──────────────────────────────────────────
+function updateDailySummary(){
+  let count=0;
+  for(let p=1;p<=4;p++){const d=getDay(p);if(d.done)count++;}
+  const pct=Math.round((count/4)*100);
+  document.getElementById('ds-count').textContent=count;
+  document.getElementById('ds-bar-fill').style.width=pct+'%';
+  const ringFill=document.getElementById('ds-ring-fill');
+  if(ringFill)ringFill.style.strokeDashoffset=175.9-(175.9*pct/100);
+  const streak=calcGlobalStreak();
+  const streakWrap=document.getElementById('ds-streak-wrap');
+  if(streak>0)streakWrap.innerHTML=`<div class="ds-streak">🔥 ${streak} day streak</div>`;
+  else streakWrap.innerHTML='';
+  const titles={0:'Let\'s get started',1:'Great start!',2:'Halfway there!',3:'Almost there!',4:'All done! 🎉'};
+  const subs={0:'Tap ✓ on any habit below',1:'1 more to go for a solid session',2:'2 down, 2 to go',3:'One more habit!',4:'Outstanding work today'};
+  document.getElementById('ds-title').textContent=titles[count]||'Keep going!';
+  document.getElementById('ds-sub').textContent=subs[count]||'';
+  // global streak header
+  const gsEl=document.getElementById('globalStreak');
+  if(streak>0)gsEl.innerHTML=`<span style="font-size:12px;font-weight:700;color:#fdcb6e">🔥 ${streak}d</span>`;
+  else gsEl.innerHTML='';
+}
+
+// ── MARK HABIT DONE ────────────────────────────────────────
+function markHabitDone(p){
+  const d=getDay(p);
+  d.done=!d.done;
+  if(d.done){
+    // pop animation
+    const card=document.getElementById('hc-'+p);
+    card.classList.remove('popping');
+    void card.offsetWidth;
+    card.classList.add('popping');
+    setTimeout(()=>card.classList.remove('popping'),700);
+    toast(PROTO[p].icon+' '+PROTO[p].name+' complete! 🎉');
+  }
+  save();
+  refreshHabitCard(p);
+  updateDailySummary();
+}
+
+// ── LOG SET ───────────────────────────────────────────────
+function logSet(p){
+  const d=getDay(p);
+  const target=S.setsTarget[p]||PROTO[p].defaultSets;
+  if(d.sets<target){
+    d.sets++;
+    if(p===4){
+      const milesIn=parseFloat(document.getElementById('p4-miles-in').value)||1;
+      d.miles=(d.miles||0)+milesIn;
+    }
+    if(d.sets>=target&&!d.done){markHabitDone(p);return;}
+  } else {toast('All sets done! Tap ✓ to mark complete.');}
+  save();refreshHabitCard(p);updateDailySummary();
+}
+
+// ── SET DOTS ──────────────────────────────────────────────
+function updateSetCount(p,val,silent){
+  val=parseInt(val)||PROTO[p].defaultSets;
+  if(!silent)S.setsTarget[p]=val;
+  const target=val;
+  const done=getDay(p).sets||0;
+  updateSetDots(p,done,target);
+  if(!silent)save();
+}
+
+function updateSetDots(p,done,target){
+  const row=document.getElementById('srow-'+p);if(!row)return;
+  const color=PROTO[p].color;
+  row.innerHTML='';
+  for(let i=1;i<=target;i++){
+    const dot=document.createElement('div');
+    dot.className='sdot'+(i<=done?' done':'');
+    dot.textContent=i;
+    if(i<=done)dot.style.background=color;
+    dot.style.borderColor=i<=done?color:'';
+    dot.onclick=()=>{
+      const d=getDay(p);
+      d.sets=(d.sets===i)?i-1:i;
+      save();refreshHabitCard(p);updateDailySummary();
+    };
+    row.appendChild(dot);
+  }
+}
+
+// ── SUPPORT HABITS (warmup / cooldown) ────────────────────
+function toggleSupport(type){
+  S.today[type]=!S.today[type];
+  save();refreshSupport();
+  if(S.today[type])toast(type==='warmup'?'Warm-up done 🫁':'Cool-down done 🧘');
+}
+function refreshSupport(){
+  const wu=document.getElementById('sc-warmup');
+  const cd=document.getElementById('sc-cooldown');
+  if(!wu)return;
+  if(S.today.warmup)wu.classList.add('done');else wu.classList.remove('done');
+  if(S.today.cooldown)cd.classList.add('done');else cd.classList.remove('done');
+}
+
+// ── STREAK CALC ───────────────────────────────────────────
+function calcStreak(p){
+  let streak=0;
+  const d=new Date();
+  for(let i=0;i<365;i++){
+    const k=dateKey(d);
+    if(S.logs[k]&&S.logs[k][p]&&S.logs[k][p].done){streak++;d.setDate(d.getDate()-1);}
+    else break;
+  }
+  return streak;
+}
+function calcGlobalStreak(){
+  let streak=0;
+  const d=new Date();
+  for(let i=0;i<365;i++){
+    const k=dateKey(d);
+    const anyDone=S.logs[k]&&[1,2,3,4].some(p=>S.logs[k][p]&&S.logs[k][p].done);
+    if(anyDone){streak++;d.setDate(d.getDate()-1);}else break;
+  }
+  return streak;
+}
+
+// ── EXPAND/COLLAPSE DETAIL ────────────────────────────────
+function toggleDetail(p){
+  const det=document.getElementById('detail-'+p);
+  const btn=document.getElementById('exp-'+p);
+  det.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+
+// ── P2 TIMER ─────────────────────────────────────────────
+let p2Running=false,p2Iv=null;
+function toggleP2(){
+  p2Running=!p2Running;
+  const btn=document.getElementById('p2-toggle-btn');
+  if(p2Running){
+    btn.textContent='⏸ Pause';
+    p2Iv=setInterval(()=>{
+      const d=getDay(2);d.elapsed=(d.elapsed||0)+1;
+      save();updateP2Display();refreshHabitCard(2);
+    },1000);
+  }else{clearInterval(p2Iv);btn.textContent='▶ Resume';}
+}
+function updateP2Display(){
+  const d=getDay(2);const secs=d.elapsed||0;
+  const m=Math.floor(secs/60),s=secs%60;
+  const el=document.getElementById('p2-elapsed-disp');if(el)el.textContent=m+':'+(s<10?'0':'')+s;
+  const target=(S.p2Target||30)*60;
+  const pct=Math.min(100,(secs/target)*100);
+  const pb=document.getElementById('p2-pb');if(pb)pb.style.width=pct+'%';
+}
+function updateP2Target(){S.p2Target=parseInt(document.getElementById('p2-target').value)||30;save();}
+
+// ── P3 INTERVAL TIMER ────────────────────────────────────
+let p3Running=false,p3Iv=null,p3Phase='work',p3Left=30,p3Work=30,p3Rest=10;
+function updateP3Ratio(){
+  const r=document.getElementById('p3-ratio').value;
+  if(r==='3:1'){p3Work=30;p3Rest=10;}else{p3Work=20;p3Rest=100;}
+  p3Left=p3Work;
+}
+function toggleP3(){
+  p3Running=!p3Running;
+  const btn=document.getElementById('p3-interval-btn');
+  const panel=document.getElementById('p3-interval-panel');
+  if(p3Running){
+    panel.style.display='block';btn.textContent='⏸ Pause';
+    p3Phase='work';p3Left=p3Work;updateP3Disp();
+    p3Iv=setInterval(tickP3,1000);
+  }else{clearInterval(p3Iv);btn.textContent='▶ Interval Timer';}
+}
+function tickP3(){
+  p3Left--;
+  if(p3Left<=0){p3Phase=p3Phase==='work'?'rest':'work';p3Left=p3Phase==='work'?p3Work:p3Rest;}
+  updateP3Disp();
+}
+function updateP3Disp(){
+  const m=Math.floor(p3Left/60),s=p3Left%60;
+  const d=document.getElementById('p3-timer-disp');if(d)d.textContent=m+':'+(s<10?'0':'')+s;
+  const l=document.getElementById('p3-phase-lbl');if(l)l.textContent=p3Phase==='work'?'⚡ Work Phase':'😮‍💨 Rest Phase';
+}
+
+// ── P4 REST TIMER ─────────────────────────────────────────
+let p4Iv=null,p4Left=0;
+function startP4Rest(){
+  const t=document.getElementById('p4-last-time').value||'7:00';
+  const parts=t.split(':');
+  const secs=(parseInt(parts[0])||0)*60+(parseInt(parts[1])||0);
+  if(!secs){toast('Enter your last set time first');return;}
+  clearInterval(p4Iv);
+  p4Left=secs;
+  document.getElementById('p4-rest-panel').style.display='block';
+  updateP4Disp();
+  p4Iv=setInterval(()=>{
+    if(p4Left<=0){clearInterval(p4Iv);document.getElementById('p4-rest-btn').textContent='Rest Done ✓';toast('Rest done — go again!');return;}
+    p4Left--;updateP4Disp();
+  },1000);
+  document.getElementById('p4-rest-btn').textContent='⏸ Running…';
+}
+function updateP4Disp(){
+  const m=Math.floor(p4Left/60),s=p4Left%60;
+  const d=document.getElementById('p4-timer-disp');if(d)d.textContent=m+':'+(s<10?'0':'')+s;
+}
+
+// ── HYDRATION ─────────────────────────────────────────────
+function calcH(){
+  const w=parseFloat(document.getElementById('bw').value)||170;
+  S.bodyWeight=w;save();
+  const oz=(w/30).toFixed(1);
+  const ml=Math.round((w/30)*29.574);
+  document.getElementById('h-oz').textContent=oz;
+  document.getElementById('h-ml').textContent=ml+' mL';
+  calcHTotal();
+}
+function calcHTotal(){
+  const w=S.bodyWeight||170;
+  const dur=parseInt(document.getElementById('h-dur').value)||45;
+  const intervals=Math.floor(dur/15);
+  const oz=((w/30)*intervals).toFixed(1);
+  const ml=Math.round((w/30)*intervals*29.574);
+  document.getElementById('h-total-card').innerHTML=
+    `<div class="card-title">Total Fluid Needed</div>
+     <div style="font-size:28px;font-weight:900;color:var(--c4l);letter-spacing:-1px">${oz} <span style="font-size:14px;color:var(--text2)">oz</span></div>
+     <div style="font-size:13px;color:var(--text2);margin-top:4px">${ml} mL · ${dur} min · ${intervals} drink breaks</div>`;
+}
+let hTimerRunning=false,hTimerIv=null,hTimerLeft=900;
+function toggleHTimer(){
+  hTimerRunning=!hTimerRunning;
+  const btn=document.getElementById('h-timer-btn');
+  const wrap=document.getElementById('h-timer-wrap');
+  if(hTimerRunning){
+    wrap.style.display='block';hTimerLeft=900;btn.textContent='⏸ Pause';
+    updateHTDisp();
+    hTimerIv=setInterval(()=>{
+      hTimerLeft--;
+      if(hTimerLeft<=0){hTimerLeft=900;toast('💧 Drink now! ('+(S.bodyWeight/30).toFixed(1)+' oz)');}
+      updateHTDisp();
+    },1000);
+  }else{clearInterval(hTimerIv);btn.textContent='▶ Start Hydration Timer';wrap.style.display='none';}
+}
+function updateHTDisp(){const m=Math.floor(hTimerLeft/60),s=hTimerLeft%60;document.getElementById('h-timer-disp').textContent=m+':'+(s<10?'0':'')+s;}
+
+// ── MAIN TIMER ────────────────────────────────────────────
+let mtRunning=false,mtIv=null,mtSecs=0,mtTotal=0;
+function toggleMainTimer(){
+  mtRunning=!mtRunning;
+  const btn=document.getElementById('mainTimerBtn');
+  if(mtRunning){
+    if(!mtSecs){
+      const m=parseInt(document.getElementById('t-min').value)||0;
+      const s=parseInt(document.getElementById('t-sec').value)||0;
+      mtSecs=m*60+s;mtTotal=mtSecs;
+      document.getElementById('mainTimerLbl').textContent=document.getElementById('t-name').value||'Timer';
+    }
+    btn.textContent='⏸ Pause';
+    mtIv=setInterval(tickMT,1000);
+  }else{clearInterval(mtIv);btn.textContent='▶ Resume';}
+}
+function tickMT(){
+  if(!mtSecs){clearInterval(mtIv);mtRunning=false;document.getElementById('mainTimerBtn').textContent='▶ Start';toast('Timer complete ✓');return;}
+  mtSecs--;updateMTDisp();
+}
+function updateMTDisp(){
+  const m=Math.floor(mtSecs/60),s=mtSecs%60;
+  document.getElementById('mainTimerDisp').textContent=m+':'+(s<10?'0':'')+s;
+  const pct=mtTotal>0?1-(mtSecs/mtTotal):0;
+  document.getElementById('mainRingProg').setAttribute('stroke-dashoffset',377-(377*pct));
+}
+function resetMainTimer(){
+  clearInterval(mtIv);mtRunning=false;mtSecs=0;mtTotal=0;
+  document.getElementById('mainTimerBtn').textContent='▶ Start';
+  document.getElementById('mainTimerDisp').textContent='0:00';
+  document.getElementById('mainRingProg').setAttribute('stroke-dashoffset',377);
+}
+function quickTimer(secs,label){
+  clearInterval(mtIv);mtRunning=false;mtSecs=secs;mtTotal=secs;
+  document.getElementById('mainTimerLbl').textContent=label;
+  updateMTDisp();
+  showPage('timer',document.querySelectorAll('.nb')[2]);
+  toggleMainTimer();
+}
+
+// ── HISTORY ───────────────────────────────────────────────
+function renderHistory(){
+  renderStreakCards();
+  renderHeatmap();
+  renderCompletionRates();
+}
+function renderStreakCards(){
+  const el=document.getElementById('stk-cards');if(!el)return;
+  el.innerHTML=[1,2,3,4].map(p=>{
+    const streak=calcStreak(p);
+    const rate=calcRate28(p);
+    return `<div class="stk-card" data-p="${p}">
+      <div class="stk-icon">${PROTO[p].icon}</div>
+      <div class="stk-name">${PROTO[p].name}</div>
+      <div class="stk-val">${streak}</div>
+      <div class="stk-sub">day streak${streak===1?'':'s'}</div>
+      <div class="stk-bar"><div class="stk-bar-fill" style="width:${rate}%"></div></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px">${rate}% last 28d</div>
+    </div>`;
+  }).join('');
+}
+function calcRate28(p){
+  let done=0;
+  for(let i=0;i<28;i++){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const k=dateKey(d);
+    if(S.logs[k]&&S.logs[k][p]&&S.logs[k][p].done)done++;
+  }
+  return Math.round((done/28)*100);
+}
+function renderHeatmap(){
+  const grid=document.getElementById('heatmap-grid');if(!grid)return;
+  // 28 days = 4 weeks
+  const cells=[];
+  for(let i=27;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const k=dateKey(d);
+    const dots=[1,2,3,4].filter(p=>S.logs[k]&&S.logs[k][p]&&S.logs[k][p].done);
+    cells.push({k,dayLabel:DAY_LABELS[d.getDay()],dots,isToday:i===0});
+  }
+  // render as 4 weeks (rows) × 7 days (cols)
+  const colors={1:'var(--c1)',2:'var(--c2)',3:'var(--c3)',4:'var(--c4)'};
+  // build column structure (7 cols, each col has 4 cells)
+  grid.style.cssText='display:flex;gap:3px';
+  grid.innerHTML='';
+  for(let col=0;col<7;col++){
+    const colDiv=document.createElement('div');
+    colDiv.style.cssText='display:flex;flex-direction:column;gap:3px';
+    // day label at top
+    const lbl=document.createElement('div');
+    lbl.style.cssText='height:16px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3)';
+    lbl.textContent=DAY_LABELS[col];
+    colDiv.appendChild(lbl);
+    // 4 weeks of that day
+    for(let row=0;row<4;row++){
+      const idx=row*7+col;
+      if(idx>=28)continue;
+      const cell=cells[idx];
+      const cellDiv=document.createElement('div');
+      cellDiv.style.cssText='width:26px;height:26px;border-radius:5px;background:var(--bg3);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px;padding:3px';
+      if(cell.isToday)cellDiv.style.outline='2px solid rgba(255,255,255,.3)';
+      cell.dots.forEach(p=>{
+        const dot=document.createElement('div');
+        dot.style.cssText=`width:7px;height:7px;border-radius:50%;background:${colors[p]}`;
+        cellDiv.appendChild(dot);
+      });
+      colDiv.appendChild(cellDiv);
+    }
+    grid.appendChild(colDiv);
+  }
+  // legend
+  const leg=document.getElementById('hm-legend');if(leg){
+    leg.innerHTML=[1,2,3,4].map(p=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:8px;height:8px;border-radius:50%;background:${colors[p]}"></div>${PROTO[p].icon} ${PROTO[p].name.split(' ')[0]}</div>`).join('');
+  }
+}
+function renderCompletionRates(){
+  const el=document.getElementById('completion-rates');if(!el)return;
+  const colors={1:'var(--c1)',2:'var(--c2)',3:'var(--c3)',4:'var(--c4)'};
+  const colorL={1:'var(--c1l)',2:'var(--c2l)',3:'var(--c3l)',4:'var(--c4l)'};
+  el.innerHTML=[1,2,3,4].map(p=>{
+    const rate=calcRate28(p);
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:600">${PROTO[p].icon} ${PROTO[p].name}</span>
+        <span style="font-size:13px;font-weight:700;color:${colorL[p]}">${rate}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${rate}%;background:${colors[p]}"></div></div>
+    </div>`;
+  }).join('');
+}
+function clearHistory(){
+  if(confirm('Clear all history?')){S.logs={};save();renderHistory();[1,2,3,4].forEach(p=>refreshHabitCard(p));updateDailySummary();toast('History cleared');}}
+
+// ── NAV ────────────────────────────────────────────────────
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(name==='history')renderHistory();
+}
+
+// ── GUIDE ─────────────────────────────────────────────────
+function switchGuide(btn,section){
+  document.querySelectorAll('#page-guide .pill-tabs:first-of-type .pill-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('guideSectionProtocols').style.display=section==='protocols'?'block':'none';
+  document.getElementById('guideSectionExercises').style.display=section==='exercises'?'block':'none';
+  if(section==='exercises')renderLib();
+}
+function toggleAcc(hdr){
+  hdr.classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('open');
+}
+
+// ── EXERCISE LIBRARY ──────────────────────────────────────
+const EX=[
+  {proto:1,name:'Push-Ups',type:'Upper Push',muscle:'Chest / Triceps',meta:'12–50 reps',note:'Keep the lowering phase quick — minimize eccentric damage'},
+  {proto:1,name:'Pull-Ups',type:'Upper Pull',muscle:'Back / Biceps',meta:'8–20 reps',note:'Avoid deliberate slow lowering; use full range of motion'},
+  {proto:1,name:'Chin-Ups',type:'Upper Pull',muscle:'Back / Biceps',meta:'8–20 reps',note:'Supinated grip; slightly more bicep involvement than pull-ups'},
+  {proto:1,name:'Dips',type:'Upper Push',muscle:'Chest / Triceps',meta:'12–25 reps',note:'Lean forward for more chest activation; bodyweight or assisted'},
+  {proto:1,name:'Inverted Rows',type:'Upper Pull',muscle:'Back / Rear Delt',meta:'12–25 reps',note:'Scale by adjusting body angle; great pull-up precursor'},
+  {proto:1,name:'Ring Rows',type:'Upper Pull',muscle:'Back / Biceps',meta:'12–25 reps',note:'Instability adds core demand; adjust rings for difficulty'},
+  {proto:1,name:'Plank Hold',type:'Isometric',muscle:'Core / Shoulders',meta:'30–120 sec',note:'Full body tension — no sagging hips'},
+  {proto:1,name:'Side Plank',type:'Isometric',muscle:'Obliques / Core',meta:'20–60 sec/side',note:'Hip must stay elevated; excellent for lateral core stability'},
+  {proto:1,name:'L-Sit',type:'Isometric',muscle:'Core / Hip Flexors',meta:'10–30 sec',note:'Parallettes or floor; compresses hip flexors and core simultaneously'},
+  {proto:1,name:'Dead Hang',type:'Isometric',muscle:'Grip / Shoulders',meta:'20–60 sec',note:'Decompresses spine; builds grip and scapular stability'},
+  {proto:1,name:'Wall Sit',type:'Isometric',muscle:'Quads / Glutes',meta:'30–120 sec',note:'Thighs parallel or below. Add weight for progression'},
+  {proto:1,name:'Bodyweight Squats',type:'Lower Body',muscle:'Quads / Glutes',meta:'20–50 reps',note:'Fast pace; focus on hip crease below knee'},
+  {proto:1,name:'Reverse Lunges',type:'Lower Body',muscle:'Quads / Glutes',meta:'12–25 reps/leg',note:'Rear knee tracks over second toe; less knee stress than forward'},
+  {proto:1,name:'Step-Ups',type:'Lower Body',muscle:'Quads / Glutes',meta:'15–25 reps/leg',note:'Drive through heel of elevated foot'},
+  {proto:1,name:'Calf Raises',type:'Lower Body',muscle:'Calves',meta:'20–50 reps',note:'Single-leg for harder variation; full plantarflexion range'},
+  {proto:1,name:'Glute Bridges',type:'Lower Body',muscle:'Glutes / Hamstrings',meta:'20–40 reps',note:'Pause at top; use single-leg or barbell for progression'},
+  {proto:1,name:'Kettlebell Swings',type:'Hip Hinge',muscle:'Glutes / Hamstrings',meta:'15–30 reps',note:'Hip drive — not a squat. Keep back flat and hinge at hips'},
+  {proto:1,name:'Goblet Squat',type:'Lower Body',muscle:'Quads / Core',meta:'15–25 reps',note:'Weight counterbalances torso; great for depth and upright posture'},
+  {proto:1,name:'Face Pulls (Band)',type:'Upper Pull',muscle:'Rear Delt / Rotator Cuff',meta:'20–30 reps',note:'Critical for shoulder health and postural symmetry'},
+  {proto:1,name:'Band Pull-Aparts',type:'Upper Pull',muscle:'Rear Delt / Traps',meta:'20–40 reps',note:'Easy anywhere; great superset between pressing movements'},
+  {proto:1,name:'Superman Hold',type:'Isometric',muscle:'Lower Back / Glutes',meta:'10–30 sec',note:'Prone extension; builds posterior chain endurance safely'},
+  {proto:1,name:'Nordic Curl',type:'Lower Body',muscle:'Hamstrings',meta:'5–12 reps',note:'Eccentrically dominant; builds massive hamstring resilience'},
+  {proto:2,name:'Outdoor Running',type:'Full Body',muscle:'Legs / Heart',meta:'20–90+ min',note:'Most natural locomotion; varied terrain engages stabilizers'},
+  {proto:2,name:'Treadmill Running',type:'Full Body',muscle:'Legs / Heart',meta:'12–60 min',note:'Control pace precisely; use 1–3% incline to mimic outdoor effort'},
+  {proto:2,name:'Cycling (Road)',type:'Lower Body',muscle:'Quads / Heart',meta:'30–120+ min',note:'Low joint impact; high sustainable output'},
+  {proto:2,name:'Stationary Bike',type:'Lower Body',muscle:'Quads / Heart',meta:'20–60 min',note:'Spin cadence ~80–100 RPM for endurance'},
+  {proto:2,name:'Swimming',type:'Full Body',muscle:'Full Body / Heart',meta:'20–60 min',note:'Zero joint stress; breath control trains CO₂ tolerance'},
+  {proto:2,name:'Rowing Machine',type:'Full Body',muscle:'Back / Legs / Heart',meta:'15–45 min',note:'~60% legs, 40% upper body; excellent for posture'},
+  {proto:2,name:'Hiking',type:'Lower Body',muscle:'Legs / Heart',meta:'30–240+ min',note:'Elevation gain increases intensity; great for recovery days'},
+  {proto:2,name:'Jump Rope (Steady)',type:'Full Body',muscle:'Calves / Heart',meta:'12–30 min',note:'Maintain a steady rhythm; bilateral jumps are easier'},
+  {proto:2,name:'Elliptical',type:'Full Body',muscle:'Legs / Arms / Heart',meta:'20–60 min',note:'Lowest joint impact; good active recovery tool'},
+  {proto:2,name:'Stair Climber',type:'Lower Body',muscle:'Glutes / Quads / Heart',meta:'15–40 min',note:'High caloric demand; keep hands off rails for full benefit'},
+  {proto:2,name:'Ski Erg',type:'Upper Body',muscle:'Lats / Core / Heart',meta:'15–40 min',note:'Rare upper-body dominant cardio; mimics cross-country ski poling'},
+  {proto:2,name:'Brisk Walking',type:'Lower Body',muscle:'Legs / Heart',meta:'30–90 min',note:'Best for active recovery; Zone 1–2 heart rate'},
+  {proto:3,name:'Assault / Air Bike',type:'Full Body',muscle:'Full Body',meta:'30s on / 10s rest',ratio:'3:1',note:'Gold standard low-skill HIIT — near zero injury risk at max effort'},
+  {proto:3,name:'Rowing Sprints',type:'Full Body',muscle:'Full Body',meta:'30s on / 10s rest',ratio:'3:1',note:'Max power each stroke; damper at 5–6 for endurance athletes'},
+  {proto:3,name:'Stationary Bike Sprint',type:'Lower Body',muscle:'Quads',meta:'30s on / 10s rest',ratio:'3:1',note:'Safest all-out sprint — no fall risk, no form breakdown'},
+  {proto:3,name:'Battle Ropes',type:'Upper Body',muscle:'Shoulders / Grip',meta:'30s on / 10s rest',ratio:'3:1',note:'Alternate or simultaneous waves; keep hips low and stable'},
+  {proto:3,name:'Jump Rope Sprints',type:'Full Body',muscle:'Calves / Heart',meta:'30s on / 10s rest',ratio:'3:1',note:'Max-speed singles or double-unders; minimal space needed'},
+  {proto:3,name:'Burpees',type:'Full Body',muscle:'Full Body',meta:'30s on / 10s rest',ratio:'3:1',note:'No equipment needed; track reps per interval'},
+  {proto:3,name:'Tuck Jumps',type:'Lower Body',muscle:'Quads / Calves',meta:'20s on / 10s rest',ratio:'3:1',note:'Drive knees to chest; land softly with bent knees'},
+  {proto:3,name:'Sled Push',type:'Full Body',muscle:'Glutes / Hamstrings',meta:'20s on / 10s rest',ratio:'3:1',note:'Low back stays neutral; drive through hips'},
+  {proto:3,name:'Medicine Ball Slams',type:'Full Body',muscle:'Core / Lats',meta:'20s on / 10s rest',ratio:'3:1',note:'Full overhead extension → aggressive slam; absorb on catch'},
+  {proto:3,name:'Heavy KB Swings',type:'Hip Hinge',muscle:'Glutes / Hamstrings',meta:'20s on / 100s rest',ratio:'1:5',note:'Form-critical — use 1:5. Hip drive only; back flat throughout'},
+  {proto:3,name:'Box Jumps',type:'Lower Body',muscle:'Quads / Glutes',meta:'5 reps / 100s rest',ratio:'1:5',note:'Step down — never jump down. Prioritize landing softly'},
+  {proto:3,name:'Heavy Barbell Squats',type:'Lower Body',muscle:'Quads / Glutes',meta:'5 reps / 100s rest',ratio:'1:5',note:'Form degrades fast — 1:5 rest is non-negotiable'},
+  {proto:3,name:'Deadlifts',type:'Full Body',muscle:'Posterior Chain',meta:'3–5 reps / 100s rest',ratio:'1:5',note:'Never sacrifice neutral spine; lower back is the limiting factor'},
+  {proto:3,name:'Plyo Push-Ups',type:'Upper Push',muscle:'Chest / Triceps',meta:'8–12 reps / 60s rest',ratio:'1:5',note:'Explosive push off floor; absorb landing with soft elbows'},
+  {proto:4,name:'Mile Run Repeats',type:'Full Body',muscle:'Legs / Heart',meta:'1 mile',note:'Gold standard — run hard, rest exact same duration, repeat'},
+  {proto:4,name:'800m Run Repeats',type:'Full Body',muscle:'Legs / Heart',meta:'800m',note:'Shorter = higher pace; more intervals needed for total volume'},
+  {proto:4,name:'400m Run Repeats',type:'Full Body',muscle:'Legs / Heart',meta:'400m',note:'Track-style; excellent pace judgment development'},
+  {proto:4,name:'1000m Row Repeats',type:'Full Body',muscle:'Full Body / Heart',meta:'1000m',note:'Excellent non-impact substitute; rest = exact split time'},
+  {proto:4,name:'500m Row Repeats',type:'Full Body',muscle:'Full Body / Heart',meta:'500m',note:'Max power per stroke; keep consistent splits across sets'},
+  {proto:4,name:'Swim 200m Repeats',type:'Full Body',muscle:'Full Body / Heart',meta:'200m',note:'Minimal joint load; breath control adds CO₂ adaptation'},
+  {proto:4,name:'Swim 400m Repeats',type:'Full Body',muscle:'Full Body / Heart',meta:'400m',note:'Longer distance = deeper aerobic stimulus per set'},
+  {proto:4,name:'5km Bike Repeats',type:'Lower Body',muscle:'Quads / Heart',meta:'5 km',note:'Sustained high power; cadence 85–95 RPM'},
+  {proto:4,name:'3-min Ski Erg',type:'Upper Body',muscle:'Lats / Core / Heart',meta:'3 min',note:'Rest equal to your working time; pace should feel hard but sustainable'},
+  {proto:4,name:'1-mile Row Repeats',type:'Full Body',muscle:'Full Body / Heart',meta:'~1600m',note:'Classic erg test; monitor stroke rate for consistency'},
+];
+const PC={1:'var(--c1)',2:'var(--c2)',3:'var(--c3)',4:'var(--c4)'};
+const PCL={1:'var(--c1l)',2:'var(--c2l)',3:'var(--c3l)',4:'var(--c4l)'};
+const PN={1:'Muscular',2:'Cardio',3:'HIIT-A',4:'HIIT-B'};
+let libFilter=0;
+function filterLib(btn,p){
+  document.querySelectorAll('#libProtoTabs .pill-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');libFilter=p;renderLib();
+}
+function renderLib(){
+  const grid=document.getElementById('libGrid');if(!grid)return;
+  const q=(document.getElementById('libSearch')?.value||'').toLowerCase();
+  const items=EX.filter(e=>{
+    if(libFilter&&e.proto!==libFilter)return false;
+    if(q&&!e.name.toLowerCase().includes(q)&&!e.muscle.toLowerCase().includes(q)&&!e.type.toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(!items.length){grid.innerHTML='<div class="lib-empty">No exercises match your filter.</div>';return;}
+  grid.innerHTML=items.map(e=>`
+    <div class="ex-card">
+      <div class="ex-header">
+        <div class="ex-name">${e.name}</div>
+        <div class="ex-pdot" style="background:${PC[e.proto]}"></div>
+      </div>
+      <div class="ex-tags">
+        <span class="ex-tag" style="background:${PC[e.proto]}22;color:${PCL[e.proto]}">${PN[e.proto]}</span>
+        <span class="ex-tag">${e.type}</span>
+        <span class="ex-tag" style="color:var(--text3)">${e.muscle}</span>
+        ${e.ratio?`<span class="ex-ratio" style="color:${PC[e.proto]};border-color:${PC[e.proto]}">${e.ratio}</span>`:''}
+      </div>
+      <div class="ex-meta">${e.meta}</div>
+      <div class="ex-note">${e.note}</div>
+    </div>`).join('');
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// ── INIT ──────────────────────────────────────────────────
+load();
+</script>
+</body>
+</html>
